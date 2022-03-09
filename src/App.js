@@ -4,7 +4,14 @@ import Web3 from "web3";
 import {CONTRACT_ABI, CONTRACT_ADDRESS} from "./config";
 import axios from "axios";
 
+
 class App extends Component {
+
+
+
+    refreshPage() {
+        window.location.reload(false);
+    }
 
     componentDidMount() {
         this.loadBlockchainData();
@@ -15,7 +22,7 @@ class App extends Component {
         const accounts = await web3.eth.getAccounts();
         console.log(accounts[0]);
         this.setState({account: accounts[0]});
-        console.log("state", this.state.account);
+        //console.log("state", this.state.account);
 
         //this.setState({account: accounts[0]});
 
@@ -29,74 +36,91 @@ class App extends Component {
 
         let nftcollection = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
         this.setState({nftcollection});
-        console.log(nftcollection.methods);
-        //yapilmasi gereken kontroller
-        //owner of token id ? returns ='> 0x2Ee1CB29722ba8fB8F58F802e63c62c105F0b154
-        //
+        //console.log(nftcollection.methods);
 
         console.log("tokenUri", await nftcollection.methods.tokenURI(2).call());
 
         const name = await nftcollection.methods.name().call();
-        const tokenByIndex = await nftcollection.methods.tokenByIndex(2).call();
-        console.log("tokenByIndex", tokenByIndex);
 
-        const tokenOfOwnerByIndex = await nftcollection.methods.tokenOfOwnerByIndex("0x2Ee1CB29722ba8fB8F58F802e63c62c105F0b154", 1).call();
-        console.log("tokenByIndex", tokenOfOwnerByIndex);
+        const balanceOf = await nftcollection.methods.balanceOf(this.state.account).call();
+        console.log("balanceOf", balanceOf);//3 donuyor yani 3 tane nft var bende bu hesapta
+
+        let nftArrayForAccount = [];
+        let tokenURIArray = [];
+        for (let i = 0; i < balanceOf; i++) {
+            //console.log("i", i);
+            //tokenOfOwnerByIndex
+            let nft = await nftcollection.methods.tokenOfOwnerByIndex(this.state.account, i).call();
+
+            //console.log("nft", nft);
+            console.log("i->", i, "nft->", nft);
+            nftArrayForAccount.push(parseInt(nft));
+        }
+
+        console.log(nftArrayForAccount);
+
+        for (let x = 0; x < nftArrayForAccount.length; x++) {
+            console.log('x =>', x);
+            let tokenUri = await nftcollection.methods.tokenURI(nftArrayForAccount[x]).call();
+            tokenURIArray.push(tokenUri);
+            console.log("tokenUri  =>", tokenUri);
+            this.fetchImage(tokenUri)
+        }
+        console.log(tokenURIArray);
+
 
         this.setState({name: name});
-
-        const url = await axios.get("ipfs://bafybeichcifstxeeuywx37yvflept7tlruzroqgtxgmxjhkdc55krtmq3u/2.json");
-        const image = url.data.image;
-        this.setState({image: image});
-        console.log(url.data.image);
-
-        console.log(nftcollection);
-
-
-        // const balance = await furkanToken.methods.balanceOf(this.state.account).call();
-        // this.setState({balance: balance});
-        // console.log(balance);
-
-
-        // const registeredVoter = await this.state.simpleDao.methods.registeredVoter(this.state.account).call({gasLimit: 3000000});
-        // console.log("name", registeredVoter.name);
-        // console.log("isVoted", registeredVoter.isVoted);
-
-        // const daoReason = await simpleDao.methods.DAOReason().call({gasLimit: 3000000});
-        // const daoTitle = await simpleDao.methods.DAOTitle().call({gasLimit: 3000000});
-
-        // this.setState({reason: daoReason});
-        // this.setState({title: daoTitle});
-
-        // this.setState({voterName: registeredVoter.name});
-        // this.setState({isVoted: registeredVoter.isVoted});
-        //
-        //
-        // this.setState({loading: false});
 
 
     }
 
     //using later
 
-    async fetchImage() {
-        const url = await axios.get("ipfs://bafybeichcifstxeeuywx37yvflept7tlruzroqgtxgmxjhkdc55krtmq3u/2.json");
-        const image = url.data.image;
+    async fetchImage(tokenUri) {
+        console.log("param tokenUri", tokenUri);
+        await axios.get(`${tokenUri}`).then((response) => {
+            console.log("fetchImage image", response.data.image);
+            this.setState({
+                images: [...this.state.images, response.data.image]
+            })
+
+        });
+
     }
 
 
     constructor(props) {
         super(props);
-        this.state = {name: 'NFT'}
-        //this.transfer = this.transfer.bind(this);
+        this.state = {
+            name: 'NFT',
+            images: [],
+        }
+        this.fetchImage = this.fetchImage.bind(this);
+        this.refreshPage = this.refreshPage.bind(this);
+
 
     }
 
     render() {
+        for (let i = 0; i < this.state.images.length; i++) {
+            console.log("render i", i);
+
+
+        }
+
         return (
             <div className="App">
                 <h2 className="display-2 text-black"> {this.state.name}</h2>
-                <img src={this.state.image} alt={this.state.name}/>;
+                {
+                    this.state.images.map((image, key) => {
+                        return (
+                            <div className={"d-flex flex-row"}>
+                                <div>
+                                    <img src={image} alt={image}/>
+                                </div>
+                            </div>
+                        )
+                    })}
 
             </div>
 
